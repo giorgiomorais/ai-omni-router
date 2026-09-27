@@ -6,6 +6,17 @@
   <title>AI-OmniRouter | Dashboard de Orquestração</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Markdown & Syntax Highlighter -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    pre code.hljs { border-radius: 0.75rem; padding: 1rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .prose p { margin-bottom: 0.75rem; }
+    .prose ul { list-style-type: disc; margin-left: 1.25rem; margin-bottom: 0.75rem; }
+    .prose ol { list-style-type: decimal; margin-left: 1.25rem; margin-bottom: 0.75rem; }
+    .prose h1, .prose h2, .prose h3 { font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; color: #38bdf8; }
+  </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
   
@@ -181,21 +192,29 @@
         : `<div class="w-8 h-8 rounded-lg bg-cyan-600/20 border border-cyan-500/30 flex items-center justify-center shrink-0"><i class="fa-solid fa-robot text-cyan-400 text-sm"></i></div>`;
 
       const metaBadge = meta ? `
-        <div class="mb-2 flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+        <div class="mb-3 flex flex-wrap items-center gap-2 text-[10px] text-slate-400 font-mono border-b border-slate-700/40 pb-2">
           <span class="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">🎯 ${meta.category}</span>
           <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">🤖 ${meta.model}</span>
           <span>⚡ ${meta.latency}ms</span>
         </div>` : '';
 
+      const contentHtml = role === 'assistant' 
+        ? `<div class="prose text-slate-200 text-sm leading-relaxed">${marked.parse(text)}</div>` 
+        : `<div class="whitespace-pre-wrap">${text}</div>`;
+
       msgDiv.innerHTML = `
         ${avatar}
-        <div class="${role === 'user' ? 'bg-blue-600 text-white order-1' : 'bg-slate-800/60 border border-slate-700/60 text-slate-200'} rounded-2xl ${role === 'user' ? 'rounded-tr-none' : 'rounded-tl-none'} p-4 max-w-[85%] whitespace-pre-wrap">
+        <div class="${role === 'user' ? 'bg-blue-600 text-white order-1' : 'bg-slate-800/80 border border-slate-700/70 text-slate-200'} rounded-2xl ${role === 'user' ? 'rounded-tr-none' : 'rounded-tl-none'} p-4 max-w-[88%] shadow-md">
           ${metaBadge}
-          ${text}
+          ${contentHtml}
         </div>
       `;
 
       chatBox.appendChild(msgDiv);
+      // Aplica Syntax Highlighting
+      msgDiv.querySelectorAll('pre code').forEach((block) => {
+        hljs.highlightElement(block);
+      });
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
