@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI-OmniRouter | Dashboard de Orquestração</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+  
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+        <i class="fa-solid fa-brain text-xl text-white"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400">
+          AI-OmniRouter
+        </h1>
+        <p class="text-xs text-slate-400">Orquestrador Inteligente Multi-Modelos • Custo R$ 0,00</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-4 text-xs">
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        Ollama Local Ativo
+      </span>
+      <a href="/docs" target="_blank" class="text-slate-400 hover:text-white transition flex items-center gap-1">
+        <i class="fa-solid fa-code"></i> Swagger API
+      </a>
+    </div>
+  </header>
+
+  <!-- Container Principal -->
+  <main class="flex-1 max-w-5xl w-full mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+    
+    <!-- Painel Lateral: Configurações & Telemetria -->
+    <div class="space-y-6">
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-cyan-400"></i> Estratégia
+        </h2>
+        <div class="space-y-3">
+          <label class="block">
+            <span class="text-xs text-slate-300">Modo de Roteamento:</span>
+            <select id="strategy" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+              <option value="cost_saving" selected>Economia Máxima (Zero Custo / Local)</option>
+              <option value="balanced">Equilibrado (Tier Gratuito + Local)</option>
+              <option value="quality_first">Qualidade Máxima (Especialistas)</option>
+            </select>
+          </label>
+          <div class="pt-2 border-t border-slate-800">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="autoDag" class="rounded border-slate-700 bg-slate-950 text-cyan-500 focus:ring-0">
+              <span class="text-xs text-slate-300 font-medium">Decomposição DAG (Multi-Etapas)</span>
+            </label>
+            <p class="text-[11px] text-slate-500 mt-1">Divide solicitações longas entre Planejador, Executor e Revisor.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Telemetria do Último Disparo -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-gauge-high text-cyan-400"></i> Auditoria de Tokens
+        </h2>
+        <div class="space-y-2 text-xs" id="telemetryBox">
+          <div class="flex justify-between py-1 border-b border-slate-800/60">
+            <span class="text-slate-400">Intenção:</span>
+            <span id="teleCategory" class="font-mono text-cyan-300">-</span>
+          </div>
+          <div class="flex justify-between py-1 border-b border-slate-800/60">
+            <span class="text-slate-400">Modelo Selecionado:</span>
+            <span id="teleModel" class="font-mono text-emerald-400">-</span>
+          </div>
+          <div class="flex justify-between py-1 border-b border-slate-800/60">
+            <span class="text-slate-400">Custo Total:</span>
+            <span id="teleCost" class="font-mono text-emerald-400 font-bold">R$ 0,00</span>
+          </div>
+          <div class="flex justify-between py-1">
+            <span class="text-slate-400">Latência:</span>
+            <span id="teleLatency" class="font-mono text-slate-300">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Área de Chat e Visualização -->
+    <div class="md:col-span-2 flex flex-col bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl overflow-hidden h-[620px]">
+      
+      <!-- Mensagens -->
+      <div id="chatBox" class="flex-1 overflow-y-auto p-5 space-y-4 text-sm">
+        <div class="flex gap-3 items-start">
+          <div class="w-8 h-8 rounded-lg bg-cyan-600/20 border border-cyan-500/30 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-robot text-cyan-400 text-sm"></i>
+          </div>
+          <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl rounded-tl-none p-4 max-w-[85%] text-slate-200">
+            Olá! Sou o <b>AI-OmniRouter</b>. Envie qualquer pergunta ou tarefa de código/análise. Eu analisarei sua intenção em tempo real e escolherei o melhor modelo para responder a custo zero.
+          </div>
+        </div>
+      </div>
+
+      <!-- Input de Envio -->
+      <div class="p-4 border-t border-slate-800 bg-slate-950/50">
+        <form id="chatForm" class="flex gap-2">
+          <input
+            type="text"
+            id="userInput"
+            placeholder="Digite sua solicitação (ex: Crie um script python ou analise uma ação)..."
+            class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+            required
+          />
+          <button
+            type="submit"
+            id="sendBtn"
+            class="px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium hover:opacity-90 transition flex items-center gap-2 shadow-lg shadow-cyan-500/20 shrink-0"
+          >
+            <span>Enviar</span>
+            <i class="fa-solid fa-paper-plane text-xs"></i>
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    const chatBox = document.getElementById('chatBox');
+    const chatForm = document.getElementById('chatForm');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const strategySelect = document.getElementById('strategy');
+    const autoDagCheck = document.getElementById('autoDag');
+
+    function appendMessage(role, text, meta = null) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `flex gap-3 items-start ${role === 'user' ? 'justify-end' : ''}`;
+      
+      const avatar = role === 'user' 
+        ? `<div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 order-2"><i class="fa-solid fa-user text-white text-xs"></i></div>`
+        : `<div class="w-8 h-8 rounded-lg bg-cyan-600/20 border border-cyan-500/30 flex items-center justify-center shrink-0"><i class="fa-solid fa-robot text-cyan-400 text-sm"></i></div>`;
+
+      const metaBadge = meta ? `
+        <div class="mb-2 flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+          <span class="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">🎯 ${meta.category}</span>
+          <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">🤖 ${meta.model}</span>
+          <span>⚡ ${meta.latency}ms</span>
+        </div>` : '';
+
+      msgDiv.innerHTML = `
+        ${avatar}
+        <div class="${role === 'user' ? 'bg-blue-600 text-white order-1' : 'bg-slate-800/60 border border-slate-700/60 text-slate-200'} rounded-2xl ${role === 'user' ? 'rounded-tr-none' : 'rounded-tl-none'} p-4 max-w-[85%] whitespace-pre-wrap">
+          ${metaBadge}
+          ${text}
+        </div>
+      `;
+
+      chatBox.appendChild(msgDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    chatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const prompt = userInput.value.trim();
+      if (!prompt) return;
+
+      appendMessage('user', prompt);
+      userInput.value = '';
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i>`;
+
+      try {
+        const isDag = autoDagCheck.checked;
+        const endpoint = isDag ? '/v1/workflow/dag' : '/v1/chat/completions';
+        
+        let bodyPayload;
+        if (isDag) {
+          bodyPayload = JSON.stringify({ prompt: prompt, strategy: strategySelect.value });
+        } else {
+          bodyPayload = JSON.stringify({
+            messages: [{ role: 'user', content: prompt }],
+            strategy: strategySelect.value
+          });
+        }
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: bodyPayload
+        });
+
+        const data = await res.json();
+
+        if (isDag) {
+          appendMessage('assistant', data.final_output, {
+            category: 'multi_step_dag',
+            model: `DAG (${data.total_steps} etapas)`,
+            latency: data.total_latency_ms
+          });
+          document.getElementById('teleCategory').textContent = 'multi_step_dag';
+          document.getElementById('teleModel').textContent = `DAG (${data.total_steps} etapas)`;
+          document.getElementById('teleCost').textContent = `R$ ${(data.total_cost_usd * 5.6).toFixed(4)}`;
+          document.getElementById('teleLatency').textContent = `${data.total_latency_ms} ms`;
+        } else {
+          const content = data.choices[0].message.content;
+          const tel = data.routing_telemetry;
+          appendMessage('assistant', content, {
+            category: tel.category_detected,
+            model: tel.model_selected,
+            latency: tel.latency_ms
+          });
+          document.getElementById('teleCategory').textContent = tel.category_detected;
+          document.getElementById('teleModel').textContent = tel.model_selected;
+          document.getElementById('teleCost').textContent = `R$ ${(tel.cost_usd * 5.6).toFixed(4)}`;
+          document.getElementById('teleLatency').textContent = `${tel.latency_ms} ms`;
+        }
+
+      } catch (err) {
+        appendMessage('assistant', 'Erro ao processar solicitação: ' + err.message);
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = `<span>Enviar</span><i class="fa-solid fa-paper-plane text-xs"></i>`;
+      }
+    });
+  </script>
+</body>
+</html>

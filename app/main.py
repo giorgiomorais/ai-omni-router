@@ -48,14 +48,31 @@ def preview_routing(req: RoutePreviewRequest):
         category=category,
         strategy=req.strategy
     )
-    return {
-        "prompt_analyzed": req.prompt,
-        "category_detected": category,
-        "confidence": confidence,
-        "selected_model": primary,
-        "fallback_model": fallback,
-        "classification_cost_usd": 0.0 # Zero custo
-    }
+from fastapi.responses import FileResponse
+import os
+from app.dispatcher.graph_dispatcher import DAGDispatcher, WorkflowDAGResult
+
+class DAGRequest(BaseModel):
+    prompt: str
+    strategy: Optional[RoutingStrategy] = RoutingStrategy.COST_SAVING
+
+@app.get("/")
+def serve_ui():
+    """Entrega a interface visual de chat do AI-OmniRouter."""
+    ui_path = os.path.join(os.path.dirname(__file__), "ui", "index.html")
+    return FileResponse(ui_path)
+
+@app.post("/v1/workflow/dag")
+async def execute_workflow_dag(req: DAGRequest):
+    """Executa decomposição multi-agente em etapas especializadas."""
+    try:
+        dag_result: WorkflowDAGResult = await DAGDispatcher.execute_dag(
+            user_prompt=req.prompt,
+            strategy=req.strategy
+        )
+        return dag_result
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 @app.post("/v1/chat/completions")
 async def chat_completion(req: ChatCompletionRequest):
