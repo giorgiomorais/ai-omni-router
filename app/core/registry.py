@@ -146,15 +146,15 @@ MODEL_CATALOG: Dict[str, ModelProfile] = {
     ),
 
     # --- GROQ (Tier Gratuito / Latência Ultra Baixa) ---
-    "groq/llama-3.3-70b-versatile": ModelProfile(
-        id="llama-3.3-70b-versatile",
+    "groq/qwen3.8-27b": ModelProfile(
+        id="qwen/qwen3.8-27b",
         provider=ProviderType.GROQ,
-        display_name="Llama 3.3 70B (Groq Free Tier)",
+        display_name="Qwen 3.8 27B (Groq Free Tier)",
         cost_per_million_input=0.0,
         cost_per_million_output=0.0,
         context_window=128000,
-        specialties=[TaskCategory.CODE, TaskCategory.REASONING, TaskCategory.FAST_FACTUAL],
+        specialties=[TaskCategory.CODE, TaskCategory.REASONING, TaskCategory.FAST_FACTUAL, TaskCategory.DATA_EXTRACTION],
         is_free_tier_available=True,
-        average_latency_ms=250
+        average_latency_ms=200
     )
 }
