@@ -67,10 +67,10 @@ MODEL_CATALOG: Dict[str, ModelProfile] = {
     ),
 
     # --- GOOGLE GEMINI (Tier Gratuito / Alta Janela) ---
-    "gemini/gemini-1.5-flash": ModelProfile(
-        id="gemini-1.5-flash",
+    "gemini/gemini-2.5-flash": ModelProfile(
+        id="gemini-2.5-flash",
         provider=ProviderType.GEMINI,
-        display_name="Google Gemini 1.5 Flash",
+        display_name="Google Gemini 2.5 Flash",
         cost_per_million_input=0.075,
         cost_per_million_output=0.30,
         context_window=1048576,
@@ -78,14 +78,14 @@ MODEL_CATALOG: Dict[str, ModelProfile] = {
         is_free_tier_available=True,
         average_latency_ms=600
     ),
-    "gemini/gemini-1.5-pro": ModelProfile(
-        id="gemini-1.5-pro",
+    "gemini/gemini-2.5-pro": ModelProfile(
+        id="gemini-2.5-pro",
         provider=ProviderType.GEMINI,
-        display_name="Google Gemini 1.5 Pro",
+        display_name="Google Gemini 2.5 Pro",
         cost_per_million_input=1.25,
         cost_per_million_output=5.00,
         context_window=2097152,
-        specialties=[TaskCategory.LONG_CONTEXT, TaskCategory.REASONING],
+        specialties=[TaskCategory.LONG_CONTEXT, TaskCategory.REASONING, TaskCategory.CODE, TaskCategory.CREATIVE],
         is_free_tier_available=True,
         average_latency_ms=1500
     ),
