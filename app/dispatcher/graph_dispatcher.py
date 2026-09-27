@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from app.adapters.base import ChatMessage, CompletionResponse
 from app.adapters.factory import get_adapter_for_provider
 from app.core.config import RoutingStrategy
-from app.core.registry import TaskCategory, ModelProfile
+from app.core.registry import TaskCategory, ModelProfile, ProviderType
 from app.router.classifier import SemanticClassifier
 from app.router.selector import ModelSelector
 
@@ -83,21 +83,24 @@ class DAGDispatcher:
 
         for step in steps:
             adapter = get_adapter_for_provider(step.model_profile.provider)
+            resp = None
             try:
                 resp = await adapter.generate_completion(
                     model_id=step.model_profile.id,
                     messages=[
-                        ChatMessage(role="system", content="Você é um agente especialista em sua fase do pipeline."),
+                        ChatMessage(role="system", content="Você é um especialista analítico sênior em sua fase do pipeline."),
                         ChatMessage(role="user", content=accumulated_context + "\nSua Tarefa:\n" + step.instruction_prompt)
                     ]
                 )
-            except Exception:
-                # Fallback seguro para o Llama 3.2 local
-                fb_adapter = get_adapter_for_provider(p3_model.provider)
+            except Exception as e:
+                # Fallover resiliente para modelos locais garantidos do Ollama
+                local_fallback_id = "qwen2.5-coder:1.5b" if step.category == TaskCategory.CODE else "llama3.2:1b"
+                fb_adapter = get_adapter_for_provider(ProviderType.OLLAMA)
                 resp = await fb_adapter.generate_completion(
-                    model_id=p3_model.id,
+                    model_id=local_fallback_id,
                     messages=[ChatMessage(role="user", content=accumulated_context + "\n" + step.instruction_prompt)]
                 )
+                resp.fallback_triggered = True
 
             step.result = resp.content
             step.cost_usd = resp.cost_usd
