@@ -31,5 +31,12 @@ def get_adapter_for_provider(provider: ProviderType) -> BaseProviderAdapter:
             provider_name="groq"
         )
 
+    if provider == ProviderType.OPENROUTER:
+        return OpenAICompatibleAdapter(
+            api_key=settings.OPENROUTER_API_KEY or "",
+            base_url="https://openrouter.ai/api/v1",
+            provider_name="openrouter"
+        )
+
     # Fallback padrão
     return ADAPTER_POOL[ProviderType.OLLAMA]

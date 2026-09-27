@@ -16,6 +16,7 @@ class ProviderType(str, Enum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     GROQ = "groq"
+    OPENROUTER = "openrouter"
 
 class ModelProfile(BaseModel):
     id: str
@@ -156,5 +157,18 @@ MODEL_CATALOG: Dict[str, ModelProfile] = {
         specialties=[TaskCategory.CODE, TaskCategory.REASONING, TaskCategory.FAST_FACTUAL, TaskCategory.DATA_EXTRACTION],
         is_free_tier_available=True,
         average_latency_ms=200
+    ),
+
+    # --- OPENROUTER (Tier Gratuito / Modelos de Alta Capacidade 120B) ---
+    "openrouter/nvidia-nemotron-120b": ModelProfile(
+        id="nvidia/nemotron-3-super-120b-a12b:free",
+        provider=ProviderType.OPENROUTER,
+        display_name="NVIDIA Nemotron Super 120B (OpenRouter Free)",
+        cost_per_million_input=0.0,
+        cost_per_million_output=0.0,
+        context_window=128000,
+        specialties=[TaskCategory.REASONING, TaskCategory.CODE, TaskCategory.FAST_FACTUAL],
+        is_free_tier_available=True,
+        average_latency_ms=1800
     )
 }

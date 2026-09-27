@@ -19,6 +19,8 @@ class ModelSelector:
                 available.append(profile)
             elif profile.provider == ProviderType.GROQ and settings.GROQ_API_KEY:
                 available.append(profile)
+            elif profile.provider == ProviderType.OPENROUTER and settings.OPENROUTER_API_KEY:
+                available.append(profile)
         
         # Se nenhuma chave de nuvem estiver configurada, usa o pool local
         if not available:
