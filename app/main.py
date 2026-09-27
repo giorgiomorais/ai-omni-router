@@ -76,21 +76,63 @@ def execute_analytics_sql(req: AnalyticsQueryRequest):
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-@app.post("/v1/analytics/init-sample-data")
-def init_sample_commercial_data():
-    """Carrega dataset de exemplo de vendas comerciais no DuckDB em memória."""
-    sample_data = {
-        "id_pedido": [1001, 1002, 1003, 1004, 1005],
-        "cliente": ["Tech Corp", "Varejo Brasil", "Alfa Log", "Beta Distribuidora", "Gama Retail"],
-        "segmento": ["Enterprise", "SMB", "Logística", "SMB", "Enterprise"],
-        "valor_bruto": [15000.0, 3200.0, 8900.0, 1200.0, 45000.0],
-        "impostos": [2475.0, 528.0, 1468.5, 198.0, 7425.0],
-        "custo_produtos": [6000.0, 1500.0, 3800.0, 600.0, 18000.0],
-        "status": ["Faturado", "Faturado", "Cancelado", "Faturado", "Faturado"]
-    }
-    df = pd.DataFrame(sample_data)
-    info = DuckDBEngine.load_dataframe(df, "fato_vendas")
-    return {"message": "Tabela fato_vendas carregada com sucesso!", "details": info}
+from fastapi import UploadFile, File
+import io
+from pypdf import PdfReader
+
+@app.post("/v1/files/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """Recebe arquivos do usuário (CSV, XLSX, PDF, TXT) e processa no motor local."""
+    try:
+        content_bytes = await file.read()
+        filename = file.filename.lower()
+        
+        # 1. Se for CSV ou Excel: carrega no DuckDB em memória para queries analíticas
+        if filename.endswith(".csv"):
+            df = pd.read_csv(io.BytesIO(content_bytes))
+            table_name = "tabela_upload"
+            details = DuckDBEngine.load_dataframe(df, table_name)
+            summary = (
+                f"Arquivo CSV `{file.filename}` carregado no DuckDB com sucesso!\n"
+                f"- Tabela SQL: `{table_name}`\n"
+                f"- Total de Linhas: {len(df)}\n"
+                f"- Colunas: {', '.join([c['name'] for c in details['columns']])}\n\n"
+                f"Você já pode fazer perguntas ou pedir queries sobre esta tabela!"
+            )
+            return {"status": "success", "file_type": "csv", "summary": summary, "table_name": table_name, "row_count": len(df)}
+
+        elif filename.endswith(".xlsx") or filename.endswith(".xls"):
+            df = pd.read_excel(io.BytesIO(content_bytes))
+            table_name = "tabela_upload"
+            details = DuckDBEngine.load_dataframe(df, table_name)
+            summary = (
+                f"Planilha Excel `{file.filename}` carregada no DuckDB com sucesso!\n"
+                f"- Tabela SQL: `{table_name}`\n"
+                f"- Total de Linhas: {len(df)}\n"
+                f"- Colunas: {', '.join([c['name'] for c in details['columns']])}"
+            )
+            return {"status": "success", "file_type": "excel", "summary": summary, "table_name": table_name, "row_count": len(df)}
+
+        elif filename.endswith(".pdf"):
+            reader = PdfReader(io.BytesIO(content_bytes))
+            text = ""
+            for page in reader.pages:
+                extracted = page.extract_text()
+                if extracted:
+                    text += extracted + "\n"
+            summary = f"Arquivo PDF `{file.filename}` lido com sucesso ({len(reader.pages)} páginas extraídas)."
+            return {"status": "success", "file_type": "pdf", "summary": summary, "extracted_text": text[:15000]}
+
+        elif filename.endswith(".txt") or filename.endswith(".sql") or filename.endswith(".py"):
+            text = content_bytes.decode("utf-8", errors="ignore")
+            summary = f"Arquivo de texto `{file.filename}` lido com sucesso ({len(text)} caracteres)."
+            return {"status": "success", "file_type": "text", "summary": summary, "extracted_text": text[:15000]}
+
+        else:
+            raise HTTPException(status_code=400, detail="Formato não suportado. Envie CSV, XLSX, PDF ou TXT.")
+
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Erro ao processar arquivo: {str(exc)}")
 
 @app.post("/v1/workflow/dag")
 async def execute_workflow_dag(req: DAGRequest):

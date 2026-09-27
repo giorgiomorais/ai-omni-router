@@ -102,13 +102,26 @@
         </div>
       </div>
 
-      <!-- Input de Envio -->
+      <!-- Input de Envio com Botão de Anexo -->
       <div class="p-4 border-t border-slate-800 bg-slate-950/50">
-        <form id="chatForm" class="flex gap-2">
+        <div id="fileBadge" class="hidden mb-2 items-center justify-between px-3 py-1.5 rounded-lg bg-cyan-950/40 border border-cyan-800/40 text-xs text-cyan-300">
+          <span class="flex items-center gap-2"><i class="fa-solid fa-file text-cyan-400"></i> <span id="fileNameDisplay">arquivo.csv</span></span>
+          <button type="button" id="removeFileBtn" class="text-slate-400 hover:text-red-400">&times;</button>
+        </div>
+        <form id="chatForm" class="flex gap-2 items-center">
+          <input type="file" id="fileInput" class="hidden" accept=".csv,.xlsx,.xls,.pdf,.txt,.sql,.py" />
+          <button
+            type="button"
+            id="attachBtn"
+            title="Anexar CSV, Excel ou PDF do seu notebook"
+            class="p-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-cyan-400 hover:border-cyan-500 transition flex items-center justify-center shrink-0"
+          >
+            <i class="fa-solid fa-paperclip text-sm"></i>
+          </button>
           <input
             type="text"
             id="userInput"
-            placeholder="Digite sua solicitação (ex: Crie um script python ou analise uma ação)..."
+            placeholder="Digite sua mensagem ou anexe um arquivo (CSV, Excel, PDF)..."
             class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
             required
           />
@@ -133,6 +146,31 @@
     const sendBtn = document.getElementById('sendBtn');
     const strategySelect = document.getElementById('strategy');
     const autoDagCheck = document.getElementById('autoDag');
+    const attachBtn = document.getElementById('attachBtn');
+    const fileInput = document.getElementById('fileInput');
+    const fileBadge = document.getElementById('fileBadge');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const removeFileBtn = document.getElementById('removeFileBtn');
+
+    let currentFile = null;
+
+    attachBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        currentFile = e.target.files[0];
+        fileNameDisplay.textContent = `${currentFile.name} (${(currentFile.size / 1024).toFixed(1)} KB)`;
+        fileBadge.classList.remove('hidden');
+        fileBadge.classList.add('flex');
+      }
+    });
+
+    removeFileBtn.addEventListener('click', () => {
+      currentFile = null;
+      fileInput.value = '';
+      fileBadge.classList.add('hidden');
+      fileBadge.classList.remove('flex');
+    });
 
     function appendMessage(role, text, meta = null) {
       const msgDiv = document.createElement('div');
@@ -164,23 +202,54 @@
     chatForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const prompt = userInput.value.trim();
-      if (!prompt) return;
+      if (!prompt && !currentFile) return;
 
-      appendMessage('user', prompt);
+      let userDisplay = prompt;
+      if (currentFile) {
+        userDisplay = `📎 [Arquivo: ${currentFile.name}]\n` + prompt;
+      }
+
+      appendMessage('user', userDisplay);
       userInput.value = '';
       sendBtn.disabled = true;
       sendBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i>`;
 
       try {
+        let finalPrompt = prompt;
+
+        // Se houver arquivo anexado, processa no endpoint de upload primeiro
+        if (currentFile) {
+          const formData = new FormData();
+          formData.append('file', currentFile);
+          
+          const uploadRes = await fetch('/v1/files/upload', {
+            method: 'POST',
+            body: formData
+          });
+          const uploadData = await uploadRes.json();
+
+          if (uploadData.file_type === 'csv' || uploadData.file_type === 'excel') {
+            finalPrompt = `[Contexto: O usuário anexou a tabela '${uploadData.table_name}' com ${uploadData.row_count} linhas no DuckDB]\nPergunta do usuário: ${prompt || 'Analise a estrutura dessa tabela e sugira métricas de vendas e queries úteis.'}`;
+          } else if (uploadData.extracted_text) {
+            finalPrompt = `[Conteúdo do Arquivo '${currentFile.name}']:\n${uploadData.extracted_text}\n\nPergunta do usuário: ${prompt || 'Resuma o documento acima.'}`;
+          }
+
+          // Limpa badge do arquivo após envio
+          currentFile = null;
+          fileInput.value = '';
+          fileBadge.classList.add('hidden');
+          fileBadge.classList.remove('flex');
+        }
+
         const isDag = autoDagCheck.checked;
         const endpoint = isDag ? '/v1/workflow/dag' : '/v1/chat/completions';
         
         let bodyPayload;
         if (isDag) {
-          bodyPayload = JSON.stringify({ prompt: prompt, strategy: strategySelect.value });
+          bodyPayload = JSON.stringify({ prompt: finalPrompt, strategy: strategySelect.value });
         } else {
           bodyPayload = JSON.stringify({
-            messages: [{ role: 'user', content: prompt }],
+            messages: [{ role: 'user', content: finalPrompt }],
             strategy: strategySelect.value
           });
         }
