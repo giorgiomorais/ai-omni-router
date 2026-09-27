@@ -5,8 +5,11 @@ description = "Orquestrador Inteligente Multi-Modelos de IA com Custo Zero de In
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "duckdb>=1.5.5",
     "fastapi>=0.141.1",
     "httpx>=0.28.1",
+    "openpyxl>=3.1.5",
+    "pandas>=3.0.6",
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
     "pytest>=9.1.1",

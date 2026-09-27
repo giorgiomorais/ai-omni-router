@@ -47,13 +47,40 @@ class Dispatcher:
 
         logger.info(f"Tarefa: {category.value} | Confiança: {confidence:.2f} | Roteando para: {primary_model.id} ({primary_model.provider})")
 
-        # 4. Tentativa de execução no modelo primário
+        # 4. Injeção de Prompt Especialista e Anonimização LGPD Shield
+        from app.core.data_masker import DataMasker
+        from app.core.expert_prompts import get_expert_prompt_for_category
+
+        expert_prompt = get_expert_prompt_for_category(category)
+        
+        # Prepara mensagens com prompt de sistema especialista e máscara de dados
+        processed_messages: List[ChatMessage] = []
+        reverse_maps: List[dict] = []
+        
+        # Adiciona prompt de sistema especialista se não existir
+        has_system = any(m.role == "system" for m in messages)
+        if not has_system:
+            processed_messages.append(ChatMessage(role="system", content=expert_prompt))
+
+        for m in messages:
+            if m.role == "user" and not primary_model.is_local:
+                masked_content, rev_map = DataMasker.mask(m.content)
+                reverse_maps.append(rev_map)
+                processed_messages.append(ChatMessage(role=m.role, content=masked_content))
+            else:
+                processed_messages.append(m)
+
+        # 5. Tentativa de execução no modelo primário
         adapter = get_adapter_for_provider(primary_model.provider)
         try:
             completion = await adapter.generate_completion(
                 model_id=primary_model.id,
-                messages=messages
+                messages=processed_messages
             )
+            # Desmascara resposta se aplicável
+            for r_map in reverse_maps:
+                completion.content = DataMasker.unmask(completion.content, r_map)
+
             return OrchestrationResult(
                 category_detected=category,
                 confidence=confidence,

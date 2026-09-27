@@ -62,6 +62,36 @@ def serve_ui():
     ui_path = os.path.join(os.path.dirname(__file__), "ui", "index.html")
     return FileResponse(ui_path)
 
+from app.analytics.duckdb_engine import DuckDBEngine
+import pandas as pd
+
+class AnalyticsQueryRequest(BaseModel):
+    sql: str
+
+@app.post("/v1/analytics/query")
+def execute_analytics_sql(req: AnalyticsQueryRequest):
+    """Executa queries analíticas SQL em memória com DuckDB a custo zero."""
+    try:
+        return DuckDBEngine.execute_query(req.sql)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+@app.post("/v1/analytics/init-sample-data")
+def init_sample_commercial_data():
+    """Carrega dataset de exemplo de vendas comerciais no DuckDB em memória."""
+    sample_data = {
+        "id_pedido": [1001, 1002, 1003, 1004, 1005],
+        "cliente": ["Tech Corp", "Varejo Brasil", "Alfa Log", "Beta Distribuidora", "Gama Retail"],
+        "segmento": ["Enterprise", "SMB", "Logística", "SMB", "Enterprise"],
+        "valor_bruto": [15000.0, 3200.0, 8900.0, 1200.0, 45000.0],
+        "impostos": [2475.0, 528.0, 1468.5, 198.0, 7425.0],
+        "custo_produtos": [6000.0, 1500.0, 3800.0, 600.0, 18000.0],
+        "status": ["Faturado", "Faturado", "Cancelado", "Faturado", "Faturado"]
+    }
+    df = pd.DataFrame(sample_data)
+    info = DuckDBEngine.load_dataframe(df, "fato_vendas")
+    return {"message": "Tabela fato_vendas carregada com sucesso!", "details": info}
+
 @app.post("/v1/workflow/dag")
 async def execute_workflow_dag(req: DAGRequest):
     """Executa decomposição multi-agente em etapas especializadas."""
