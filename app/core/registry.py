@@ -32,6 +32,17 @@ class ModelProfile(BaseModel):
 # Catálogo Unificado de Modelos
 MODEL_CATALOG: Dict[str, ModelProfile] = {
     # --- MODELOS LOCAIS (100% CUSTO ZERO) ---
+    "ollama/duckdb-nsql:7b": ModelProfile(
+        id="duckdb-nsql:7b",
+        provider=ProviderType.OLLAMA,
+        display_name="DuckDB-NSQL 7B (Especialista SQL Local)",
+        cost_per_million_input=0.0,
+        cost_per_million_output=0.0,
+        context_window=32768,
+        specialties=[TaskCategory.CODE, TaskCategory.DATA_EXTRACTION],
+        is_local=True,
+        average_latency_ms=1200
+    ),
     "ollama/qwen2.5-coder:1.5b": ModelProfile(
         id="qwen2.5-coder:1.5b",
         provider=ProviderType.OLLAMA,
