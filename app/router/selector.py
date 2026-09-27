@@ -19,11 +19,8 @@ class ModelSelector:
                 available.append(profile)
             elif profile.provider == ProviderType.GROQ and settings.GROQ_API_KEY:
                 available.append(profile)
-            # Se for tier gratuito disponível sem chave ou com chave pública, entra na lista
-            elif profile.is_free_tier_available and profile.cost_per_million_input == 0:
-                available.append(profile)
         
-        # Fallback de segurança se nenhuma chave de nuvem estiver cadastrada: retorna modelos locais
+        # Se nenhuma chave de nuvem estiver configurada, usa o pool local
         if not available:
             available = [m for m in MODEL_CATALOG.values() if m.is_local]
 
