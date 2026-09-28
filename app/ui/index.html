@@ -96,7 +96,30 @@
           </div>
         </div>
       </div>
-    </div>
+
+      <!-- DRE Acumulada de Economia vs GPT-4o -->
+      <div class="bg-gradient-to-br from-slate-900 to-slate-950 border border-emerald-500/30 rounded-2xl p-5 shadow-xl">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-emerald-400 mb-2 flex items-center gap-2">
+          <i class="fa-solid fa-piggy-bank"></i> Economia Acumulada
+        </h2>
+        <p class="text-[11px] text-slate-400 mb-3">Valor economizado em comparação com GPT-4o:</p>
+        <div class="text-2xl font-bold font-mono text-emerald-400" id="totalSavedDisplay">R$ 0,00</div>
+        <div class="text-[10px] text-slate-500 mt-1 flex justify-between">
+          <span>Tokens Livres: <b id="totalTokensDisplay" class="text-slate-300">0</b></span>
+          <button id="refreshSavingsBtn" class="text-cyan-400 hover:underline">Atualizar</button>
+        </div>
+      </div>
+
+      <!-- Ações do Relatório -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <button
+          type="button"
+          id="exportPdfBtn"
+          class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold flex items-center justify-center gap-2 transition"
+        >
+          <i class="fa-solid fa-file-pdf text-red-400"></i> Exportar Relatório Executivo (PDF)
+        </button>
+      </div>
 
     <!-- Área de Chat e Visualização -->
     <div class="md:col-span-2 flex flex-col bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl overflow-hidden h-[620px]">
@@ -305,6 +328,9 @@
           document.getElementById('teleLatency').textContent = `${tel.latency_ms} ms`;
         }
 
+        // Atualiza a DRE de economia após cada resposta
+        fetchSavings();
+
       } catch (err) {
         appendMessage('assistant', 'Erro ao processar solicitação: ' + err.message);
       } finally {
@@ -312,6 +338,62 @@
         sendBtn.innerHTML = `<span>Enviar</span><i class="fa-solid fa-paper-plane text-xs"></i>`;
       }
     });
+
+    // Função para carregar DRE de economia acumulada
+    async function fetchSavings() {
+      try {
+        const res = await fetch('/v1/savings/summary');
+        const data = await res.json();
+        document.getElementById('totalSavedDisplay').textContent = `R$ ${data.total_saved_brl.toFixed(2)}`;
+        document.getElementById('totalTokensDisplay').textContent = data.total_tokens.toLocaleString('pt-BR');
+      } catch (e) {
+        console.error('Erro ao atualizar savings:', e);
+      }
+    }
+
+    document.getElementById('refreshSavingsBtn').addEventListener('click', fetchSavings);
+
+    // Exportador de Relatório Executivo em PDF
+    document.getElementById('exportPdfBtn').addEventListener('click', async () => {
+      const messages = chatBox.querySelectorAll('.prose');
+      if (messages.length === 0) {
+        alert('Nenhuma análise disponível para exportar. Faça uma pergunta primeiro!');
+        return;
+      }
+      
+      const lastAnalysis = messages[messages.length - 1].innerText;
+      const btn = document.getElementById('exportPdfBtn');
+      btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-red-400"></i> Gerando PDF...`;
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/v1/reports/export-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: "Relatório de Análise Comercial e Vendas",
+            content: lastAnalysis
+          })
+        });
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Relatorio_Executivo_OmniRouter_${new Date().toISOString().slice(0,10)}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } catch (err) {
+        alert('Erro ao gerar PDF: ' + err.message);
+      } finally {
+        btn.innerHTML = `<i class="fa-solid fa-file-pdf text-red-400"></i> Exportar Relatório Executivo (PDF)`;
+        btn.disabled = false;
+      }
+    });
+
+    // Carrega dados iniciais
+    fetchSavings();
   </script>
 </body>
 </html>

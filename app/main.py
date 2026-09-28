@@ -146,6 +146,39 @@ async def execute_workflow_dag(req: DAGRequest):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
+from app.core.session_manager import SessionManager
+from app.analytics.report_exporter import ReportExporter
+from fastapi.responses import Response
+
+class PDFExportRequest(BaseModel):
+    title: str = "Relatório de Análise"
+    content: str
+
+@app.get("/v1/savings/summary")
+def get_token_savings_summary():
+    """Retorna DRE acumulada de economia de tokens vs GPT-4o."""
+    return SessionManager.get_savings_summary()
+
+@app.get("/v1/sessions")
+def list_chat_sessions():
+    """Lista histórico de sessões salvas no SQLite local."""
+    return {"sessions": SessionManager.list_sessions()}
+
+@app.get("/v1/sessions/{session_id}")
+def get_session_history(session_id: str):
+    """Recupera mensagens de uma sessão específica."""
+    return {"messages": SessionManager.get_messages(session_id)}
+
+@app.post("/v1/reports/export-pdf")
+def export_pdf_report(req: PDFExportRequest):
+    """Gera e faz download de relatório executivo em PDF estilizado."""
+    pdf_bytes = ReportExporter.generate_pdf_report(req.title, req.content)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=relatorio_omni_{req.title.replace(' ', '_')}.pdf"}
+    )
+
 @app.post("/v1/chat/completions")
 async def chat_completion(req: ChatCompletionRequest):
     """Endpoint principal de orquestração com despacho inteligente."""
@@ -155,6 +188,16 @@ async def chat_completion(req: ChatCompletionRequest):
             strategy=req.strategy,
             preferred_provider=req.preferred_provider
         )
+
+        # Grava auditoria de economia de tokens no SQLite
+        SessionManager.record_savings(
+            provider=result.primary_model.provider,
+            model=result.primary_model.id,
+            tokens_in=result.response.tokens_input,
+            tokens_out=result.response.tokens_output,
+            actual_cost=result.response.cost_usd
+        )
+
         return {
             "id": f"omni-{result.response.model_used}",
             "object": "chat.completion",

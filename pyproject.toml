@@ -5,6 +5,7 @@ description = "Orquestrador Inteligente Multi-Modelos de IA com Custo Zero de In
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "aiosqlite>=0.22.1",
     "duckdb>=1.5.5",
     "fastapi>=0.141.1",
     "httpx>=0.28.1",
@@ -17,7 +18,10 @@ dependencies = [
     "pytest-asyncio>=1.4.0",
     "python-dotenv>=1.2.3",
     "python-multipart>=0.0.32",
+    "reportlab>=5.0.1",
     "rich>=15.0.0",
+    "sqlalchemy>=2.0.54",
+    "sqlmodel>=0.0.47",
     "uvicorn>=0.54.0",
 ]
 
