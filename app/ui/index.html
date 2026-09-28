@@ -10,6 +10,8 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <!-- Chart.js for Interactive Data Visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     pre code.hljs { border-radius: 0.75rem; padding: 1rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
     .prose p { margin-bottom: 0.75rem; }
@@ -139,11 +141,21 @@
 
       <!-- Input de Envio com Botão de Anexo -->
       <div class="p-4 border-t border-slate-800 bg-slate-950/50">
+        <!-- Quick Slash Command Pills -->
+        <div class="flex items-center gap-2 mb-2 overflow-x-auto pb-1 text-xs">
+          <span class="text-slate-500 text-[11px] shrink-0 font-medium">⚡ Comandos:</span>
+          <button type="button" onclick="insertCommand('/dre')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition shrink-0">/dre</button>
+          <button type="button" onclick="insertCommand('/sql SELECT * FROM fato_vendas LIMIT 5')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition shrink-0">/sql</button>
+          <button type="button" onclick="insertCommand('/curva-abc')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition shrink-0">/curva-abc</button>
+          <button type="button" onclick="insertCommand('/grafico')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition shrink-0">/grafico</button>
+          <button type="button" onclick="insertCommand('/help')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition shrink-0">/help</button>
+        </div>
+
         <div id="fileBadge" class="hidden mb-2 items-center justify-between px-3 py-1.5 rounded-lg bg-cyan-950/40 border border-cyan-800/40 text-xs text-cyan-300">
           <span class="flex items-center gap-2"><i class="fa-solid fa-file text-cyan-400"></i> <span id="fileNameDisplay">arquivo.csv</span></span>
           <button type="button" id="removeFileBtn" class="text-slate-400 hover:text-red-400">&times;</button>
         </div>
-        <form id="chatForm" class="flex gap-2 items-center">
+        <form id="chatForm" class="flex gap-2 items-center relative">
           <input type="file" id="fileInput" class="hidden" accept=".csv,.xlsx,.xls,.pdf,.txt,.sql,.py" />
           <button
             type="button"
@@ -207,7 +219,14 @@
       fileBadge.classList.remove('flex');
     });
 
-    function appendMessage(role, text, meta = null) {
+    function insertCommand(cmd) {
+      userInput.value = cmd;
+      userInput.focus();
+    }
+
+    let chartCounter = 0;
+
+    function appendMessage(role, text, meta = null, chartConfig = null) {
       const msgDiv = document.createElement('div');
       msgDiv.className = `flex gap-3 items-start ${role === 'user' ? 'justify-end' : ''}`;
       
@@ -222,8 +241,20 @@
           <span>⚡ ${meta.latency}ms</span>
         </div>` : '';
 
+      let chartHtml = '';
+      let canvasId = '';
+      if (chartConfig) {
+        chartCounter++;
+        canvasId = `chart_canvas_${chartCounter}`;
+        chartHtml = `
+          <div class="mt-4 bg-slate-900/90 border border-slate-700/80 rounded-xl p-4 shadow-inner max-w-lg">
+            <canvas id="${canvasId}"></canvas>
+          </div>
+        `;
+      }
+
       const contentHtml = role === 'assistant' 
-        ? `<div class="prose text-slate-200 text-sm leading-relaxed">${marked.parse(text)}</div>` 
+        ? `<div class="prose text-slate-200 text-sm leading-relaxed">${marked.parse(text)}</div>${chartHtml}` 
         : `<div class="whitespace-pre-wrap">${text}</div>`;
 
       msgDiv.innerHTML = `
@@ -239,6 +270,17 @@
       msgDiv.querySelectorAll('pre code').forEach((block) => {
         hljs.highlightElement(block);
       });
+
+      // Renderiza Chart.js se houver configuração
+      if (chartConfig && canvasId) {
+        try {
+          const ctx = document.getElementById(canvasId).getContext('2d');
+          new Chart(ctx, chartConfig);
+        } catch (e) {
+          console.error("Erro ao instanciar Chart.js:", e);
+        }
+      }
+
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
@@ -318,11 +360,14 @@
         } else {
           const content = data.choices[0].message.content;
           const tel = data.routing_telemetry;
+          const chartConfig = data.command_metadata && data.command_metadata.chart ? data.command_metadata.chart : null;
+          
           appendMessage('assistant', content, {
             category: tel.category_detected,
             model: tel.model_selected,
             latency: tel.latency_ms
-          });
+          }, chartConfig);
+          
           document.getElementById('teleCategory').textContent = tel.category_detected;
           document.getElementById('teleModel').textContent = tel.model_selected;
           document.getElementById('teleCost').textContent = `R$ ${(tel.cost_usd * 5.6).toFixed(4)}`;

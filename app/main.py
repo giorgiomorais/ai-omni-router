@@ -15,6 +15,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
+from app.commands.handler import CommandHandler
+from app.skills.base import skill_registry
+
 # Modelos de requisição e resposta padrão OpenAI
 class ChatCompletionRequest(BaseModel):
     messages: List[ChatMessage]
@@ -39,6 +42,11 @@ def health_check():
 def list_models():
     """Lista todos os modelos cadastrados no catálogo com suas matrizes de custo e habilidades."""
     return {"data": list(MODEL_CATALOG.values())}
+
+@app.get("/v1/skills")
+def list_skills():
+    """Lista todas as ferramentas e skills disponíveis com seus schemas OpenAPI/JSON Schema."""
+    return {"skills": skill_registry.get_tool_schemas()}
 
 @app.post("/v1/router/preview")
 def preview_routing(req: RoutePreviewRequest):
@@ -181,8 +189,38 @@ def export_pdf_report(req: PDFExportRequest):
 
 @app.post("/v1/chat/completions")
 async def chat_completion(req: ChatCompletionRequest):
-    """Endpoint principal de orquestração com despacho inteligente."""
+    """Endpoint principal de orquestração com despacho inteligente e suporte a Slash Commands / Skills."""
     try:
+        # 1. Interceptação de Slash Commands (Zero Custo, Determinístico)
+        last_msg = req.messages[-1].content if req.messages else ""
+        if CommandHandler.is_command(last_msg):
+            cmd_res = CommandHandler.handle_command(last_msg)
+            return {
+                "id": "omni-command",
+                "object": "chat.completion",
+                "routing_telemetry": {
+                    "category_detected": "slash_command",
+                    "confidence": 1.0,
+                    "model_selected": f"local:{cmd_res.get('command')}",
+                    "provider": "deterministic_engine",
+                    "fallback_triggered": False,
+                    "cost_usd": 0.0,
+                    "latency_ms": 1
+                },
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": cmd_res.get("response", "")
+                        },
+                        "finish_reason": "stop"
+                    }
+                ],
+                "command_metadata": cmd_res,
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+            }
+
         result: OrchestrationResult = await Dispatcher.dispatch(
             messages=req.messages,
             strategy=req.strategy,
